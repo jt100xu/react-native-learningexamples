@@ -3,18 +3,45 @@ import {
     View,
     StyleSheet,
     Text,
-    Dimensions,
+    ListView,
+    DataSource,
     Image,
 } from 'react-native';
 import Swiper from 'react-native-swiper';
-const { width } = Dimensions.get('window');
+
+const weatherDataUrl = "https://api.myjson.com/bins/xrhib";
+
 export default class WeatherScreen extends React.Component {
     static navigationOptions = {
         title: 'Weather',
     };
+    _ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
 
     constructor(props) {
         super(props);
+        this.state = {
+            weatherData: [],
+        }
+    }
+
+    componentDidMount() {
+        this._getWeatherData()
+    }
+
+    _getWeatherData() {
+        let _self = this;
+        return fetch(weatherDataUrl)
+            .then((response) => response.json())
+            .then((responseJson) => {
+                console.log(responseJson);
+                this.setState({
+                    weatherData: responseJson,
+                })
+                return responseJson;
+            })
+            .catch((error) => {
+                console.error(error);
+            });
     }
 
     render() {
@@ -22,24 +49,38 @@ export default class WeatherScreen extends React.Component {
             <View>
                 <Swiper style={styles.wrapper}
                     onMomentumScrollEnd={(e, state, context) => console.log('index:', state.index)}
-                    dot={<View style={{ backgroundColor: '#fff', borderColor: '#333', borderWidth: 1, width: 5, height: 5, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3 }} />}
-                    activeDot={<View style={{ backgroundColor: '#333', width: 5, height: 5, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3 }} />}
+                    dot={<View style={{ backgroundColor: '#ccc', width: 5, height: 5, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3 }} />}
+                    activeDot={<View style={{ backgroundColor: '#aaa', width: 6, height: 6, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3 }} />}
                     paginationStyle={{
-                        justifyContent: 'center'
-                    }}
-                >
-                    <View style={styles.slide}>
-                        <Image resizeMode='stretch' style={styles.image} source={require('./img/1.jpg')} />
-                    </View>
-                    <View style={styles.slide}>
-                        <Image resizeMode='stretch' style={styles.image} source={require('./img/2.jpg')} />
-                    </View>
-                    <View style={styles.slide}>
-                        <Image resizeMode='stretch' style={styles.image} source={require('./img/3.jpg')} />
-                    </View>
-                    <View style={styles.slide}>
-                        <Image resizeMode='stretch' style={styles.image} source={require('./img/4.jpg')} />
-                    </View>
+                        bottom: 100,
+                    }} loop>
+                    {this.state.weatherData.map((weather, key) => {
+                        return <View key={key} style={styles.weatherSlide}>
+                            <View style={styles.mainInfo}>
+                                <Text>{weather.place}</Text>
+                                <View style={styles.weatherTempGroup}>
+                                    <Text>{Math.floor((weather.lowTemp + weather.highTemp) / 2)}&deg;C</Text>
+                                    <Image style={styles.weatherIcon} source={{ uri: weather.icon }} />
+                                </View>
+                                <Text>{weather.status}</Text>
+                            </View>
+                            <View style={styles.tempInfo}>
+                                <Text style={styles.tempInfoItem}>{weather.dry}</Text>
+                                <View style={styles.tempInfoItemSep} />
+                                <Text style={styles.tempInfoItem}>{weather.lowTemp}&deg;C - {weather.highTemp}&deg;C</Text>
+                                <View style={styles.tempInfoItemSep} />
+                                <Text style={styles.tempInfoItem}>{weather.wind}</Text>
+                            </View>
+                            <ListView style={styles.nextDaysListView} dataSource={this._ds.cloneWithRows(weather.nextDays)} renderRow={(nextDayItem) => {
+                                return <View style={styles.nextDaysItem}>
+                                    <Image style={styles.nextDaysItemIcon} source={{ uri: nextDayItem.icon }} />
+                                    <Text style={styles.nextDaysItemStatus}>{nextDayItem.status}</Text>
+                                    <Text style={styles.nextDaysItemStatus}>{nextDayItem.lowTemp}&deg;C - {nextDayItem.highTemp}&deg;C</Text>
+                                </View>
+                            }}></ListView>
+                            <Text style={styles.weatherDescription}>{weather.description}</Text>
+                        </View>
+                    })}
                 </Swiper>
             </View>
         )
@@ -49,42 +90,69 @@ export default class WeatherScreen extends React.Component {
 const styles = {
     wrapper: {
     },
-
-    slide: {
+    weatherSlide: {
         flex: 1,
-        justifyContent: 'center',
-        backgroundColor: 'transparent'
+        backgroundColor: 'beige',
+        flexDirection: 'column',
     },
-
-    slide1: {
-        flex: 1,
-        justifyContent: 'center',
+    mainInfo: {
+        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#9DD6EB'
+        flexDirection: 'column',
     },
-
-    slide2: {
-        flex: 1,
-        justifyContent: 'center',
+    tempInfo: {
+        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#97CAE5'
+        backgroundColor: 'beige',
+        flexDirection: 'row',
     },
-
-    slide3: {
+    tempInfoItem: {
         flex: 1,
-        justifyContent: 'center',
+        fontSize: 10,
+        fontWeight: "100",
+        color: "#222",
+        textAlign: 'center',
+    },
+    tempInfoItemSep: {
+        backgroundColor: "#eee",
+        width: 3,
+        borderRadius: 1,
+        height: 20,
+    },
+    nextDaysListView: {
+        flex: 1,
+        padding: 10,
+    },
+    nextDaysItem: {
+        margin: 3,
+        flexDirection: 'row',
+        backgroundColor: "#eee",
+        padding: 5,
         alignItems: 'center',
-        backgroundColor: '#92BBD9'
     },
-
-    text: {
-        color: '#fff',
-        fontSize: 30,
-        fontWeight: 'bold'
+    nextDaysItemStatus: {
+        flex: 1,
+        fontSize: 10,
+        fontWeight: "100",
+        color: "#222",
+        textAlign: 'center',
     },
-
-    image: {
-        width,
-        flex: 1
-    }
+    weatherTempGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    weatherIcon: {
+        width: 30,
+        height: 30,
+    },
+    nextDaysItemIcon: {
+        width: 15,
+        height: 15,
+    },
+    weatherDescription: {
+        flex: 1,
+        fontSize: 20,
+        fontWeight: "100",
+        color: "#111",
+    },
 }
